@@ -1,1 +1,248 @@
-# VentasA
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SnackPOS Móvil</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --primary: #2563eb;
+            --whatsapp: #22c55e;
+            --danger: #ef4444;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+            margin: 0; padding: 0; padding-bottom: 80px; /* Espacio para el menú inferior */
+        }
+
+        /* --- HEADER MÓVIL --- */
+        header { 
+            background: var(--surface); padding: 15px 20px; 
+            border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+        }
+        header h1 { font-size: 20px; margin: 0; font-weight: 800; }
+        header p { font-size: 12px; color: #64748b; margin: 0; }
+
+        .container { padding: 15px; }
+
+        /* --- GRID DE PRODUCTOS --- */
+        .product-grid { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; 
+        }
+        .product-card { 
+            background: var(--surface); border-radius: 16px; padding: 15px;
+            text-align: center; border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.2s;
+        }
+        .product-card:active { transform: scale(0.95); background: #f1f5f9; }
+        .p-emoji { font-size: 32px; display: block; margin-bottom: 5px; }
+        .p-name { font-size: 13px; font-weight: 600; display: block; height: 32px; }
+        .p-price { color: var(--primary); font-weight: 800; font-size: 16px; }
+
+        /* --- MENÚ INFERIOR (TABS) --- */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 70px;
+            background: var(--surface); border-top: 1px solid var(--border);
+            display: flex; justify-content: space-around; align-items: center; z-index: 20;
+        }
+        .nav-item { 
+            text-align: center; border: none; background: none; color: #94a3b8; font-size: 11px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1;
+        }
+        .nav-item.active { color: var(--primary); font-weight: 600; }
+        .nav-item span { font-size: 20px; }
+
+        /* --- SECCIONES --- */
+        .page { display: none; animation: fadeIn 0.2s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- CARRITO (TICKET) --- */
+        .cart-item { 
+            background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border);
+        }
+        .checkout-bar { 
+            background: var(--surface); padding: 20px; border-radius: 20px 20px 0 0;
+            box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
+        }
+
+        /* --- BOTONES --- */
+        .btn { 
+            width: 100%; padding: 16px; border-radius: 12px; border: none; 
+            font-weight: 700; font-size: 15px; cursor: pointer;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-wa { background: var(--whatsapp); color: white; margin-top: 10px; font-size: 13px; }
+
+        /* --- BADGE CARRITO --- */
+        .badge { 
+            background: var(--danger); color: white; font-size: 10px; 
+            padding: 2px 6px; border-radius: 10px; position: absolute; top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>SnackPOS 🍟</h1>
+    <p id="fecha-actual"></p>
+</header>
+
+<div id="view-menu" class="page active">
+    <div class="container">
+        <div class="product-grid" id="grid-productos"></div>
+    </div>
+</div>
+
+<div id="view-cart" class="page">
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3>Tu Orden</h3>
+            <button onclick="vaciarCarrito()" style="color:var(--danger); border:none; background:none; font-weight:600;">Borrar todo</button>
+        </div>
+        <div id="cart-list"></div>
+        <div class="checkout-bar">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:20px;">
+                <b>Total</b> <b id="total-val">$0.00</b>
+            </div>
+            <button class="btn btn-primary" onclick="checkout()">Finalizar Venta</button>
+        </div>
+    </div>
+</div>
+
+<div id="view-reports" class="page">
+    <div class="container">
+        <h3>Ventas de Hoy</h3>
+        <div id="history-content"></div>
+        <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
+        <input type="tel" id="wa-number" style="width:100%; padding:12px; border-radius:10px; border:1px solid var(--border);" placeholder="Número de WhatsApp">
+        <button class="btn btn-wa" onclick="enviarMenuWA()">📲 Enviar Menú al Cliente</button>
+    </div>
+</div>
+
+<nav class="bottom-nav">
+    <button class="nav-item active" onclick="showPage('view-menu', this)">
+        <span>🍴</span> Menú
+    </button>
+    <button class="nav-item" onclick="showPage('view-cart', this)" style="position:relative;">
+        <span>🛒</span> Orden
+        <span id="cart-badge" class="badge" style="display:none;">0</span>
+    </button>
+    <button class="nav-item" onclick="showPage('view-reports', this)">
+        <span>📊</span> Reportes
+    </button>
+</nav>
+
+<script>
+    const CATALOGO = [
+        { n: 'PAPAS FRANCESA', p: 45, e: '🍟' },
+        { n: 'PAPA HOJUELA', p: 25, e: '🥔' },
+        { n: 'PLATANOS FRITOS', p: 45, e: '🍌' },
+        { n: 'PLATANOS CAPEADO', p: 55, e: '🍳' },
+        { n: 'GALLETA CAPEADA', p: 55, e: '🍪' },
+        { n: 'ALITAS', p: 65, e: '🍗' }
+    ];
+
+    let cart = [];
+    let salesHistory = JSON.parse(localStorage.getItem('snack_mobile_v1')) || [];
+
+    function init() {
+        const grid = document.getElementById('grid-productos');
+        document.getElementById('fecha-actual').innerText = new Date().toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+        CATALOGO.forEach(p => {
+            grid.innerHTML += `
+                <div class="product-card" onclick="addItem('${p.n}', ${p.p}, '${p.e}')">
+                    <span class="p-emoji">${p.e}</span>
+                    <span class="p-name">${p.n}</span>
+                    <span class="p-price">$${p.p}</span>
+                </div>`;
+        });
+        updateUI();
+    }
+
+    function addItem(n, p, e) {
+        const item = cart.find(i => i.n === n);
+        if (item) { item.q++; item.s = item.q * p; }
+        else { cart.push({ n, p, q: 1, s: p, e }); }
+        updateUI();
+        // Feedback visual rápido
+        const b = document.getElementById('cart-badge');
+        b.style.transform = "scale(1.2)";
+        setTimeout(() => b.style.transform = "scale(1)", 100);
+    }
+
+    function updateUI() {
+        // Actualizar Badge
+        const b = document.getElementById('cart-badge');
+        const totalItems = cart.reduce((acc, i) => acc + i.q, 0);
+        b.innerText = totalItems;
+        b.style.display = totalItems > 0 ? 'block' : 'none';
+
+        // Actualizar Lista Carrito
+        const container = document.getElementById('cart-list');
+        container.innerHTML = cart.length ? '' : '<p style="text-align:center; margin-top:40px;">No hay productos</p>';
+        let total = 0;
+        cart.forEach(i => {
+            container.innerHTML += `<div class="cart-item"><div><b>${i.e} ${i.n}</b><br><small>${i.q} x $${i.p}</small></div><b>$${i.s}</b></div>`;
+            total += i.s;
+        });
+        document.getElementById('total-val').innerText = `$${total.toFixed(2)}`;
+    }
+
+    function showPage(id, btn) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        btn.classList.add('active');
+        if(id === 'view-reports') renderReports();
+    }
+
+    function checkout() {
+        if (!cart.length) return;
+        const sale = {
+            t: cart.reduce((a, b) => a + b.s, 0),
+            h: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            f: new Date().toLocaleDateString('es-ES'),
+            items: cart.map(i => `${i.n} (x${i.q})`).join(', ')
+        };
+        salesHistory.unshift(sale);
+        localStorage.setItem('snack_mobile_v1', JSON.stringify(salesHistory));
+        cart = [];
+        updateUI();
+        alert("✅ Venta Guardada");
+        showPage('view-menu', document.querySelector('.nav-item'));
+    }
+
+    function renderReports() {
+        const cont = document.getElementById('history-content');
+        cont.innerHTML = salesHistory.slice(0, 10).map(s => `
+            <div style="background:white; padding:12px; border-radius:10px; border:1px solid var(--border); margin-bottom:8px; display:flex; justify-content:space-between;">
+                <div><small>${s.f} | ${s.h}</small><br><b>$${s.t}</b></div>
+                <div style="font-size:10px; width:50%; text-align:right;">${s.items}</div>
+            </div>
+        `).join('') || 'Sin ventas.';
+    }
+
+    function vaciarCarrito() { if(confirm("¿Borrar orden?")) { cart = []; updateUI(); } }
+
+    function enviarMenuWA() {
+        const n = document.getElementById('wa-number').value.replace(/\D/g,'');
+        if(!n) return alert("Escribe un número");
+        let m = "*🍟 MENÚ SNACKS 🍟*%0A%0A" + CATALOGO.map(p => `${p.e} *${p.n}* - $${p.p}`).join('%0A');
+        window.open(`https://wa.me/${n}?text=${m}`, '_blank');
+    }
+
+    init();
+</script>
+
+</body>
+</html>
